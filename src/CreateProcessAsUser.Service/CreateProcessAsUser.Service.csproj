@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetPlatformIdentifier>Windows</TargetPlatformIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UserSecretsId>dotnet-CreateProcessAsUser.Service-b0b2bf1f-0217-4212-a655-ae341689cc2f</UserSecretsId>
+    <OutputType>exe</OutputType>
+    <PublishSingleFile Condition="'$(Configuration)' == 'Release'">true</PublishSingleFile>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="CSharpTools.Pipes">
+      <HintPath>O:\GitHub\ReadieFur\CSharpTools\src\CSharpTools.Pipes\bin\Release\net6.0-windows\CSharpTools.Pipes.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="SET ERRORLEVEL=0&#xD;&#xA;net stop CreateProcessAsUser.Service" />
+  </Target>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="xcopy /e /v /y &quot;$(ProjectDir)$(OutDir)&quot; &quot;D:\kOFRe\Documents\Visual Studio\CreateProcessAsUser_Service&quot;&#xD;&#xA;net start CreateProcessAsUser.Service" />
+  </Target>
+  <Import Project="O:\GitHub\ReadieFur\CreateProcessAsUser\src\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.projitems" Label="Shared" />
+</Project>

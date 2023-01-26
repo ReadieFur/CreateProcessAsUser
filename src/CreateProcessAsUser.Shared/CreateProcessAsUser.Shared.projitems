@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>5df3524e-8d10-4a9a-a0dc-47d159c0e37f</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>CreateProcessAsUser.Shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)EAuthenticationMode.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)EResult.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Properties.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SCredentials.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SMessage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SParameters.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SResult.cs" />
+  </ItemGroup>
+</Project>
