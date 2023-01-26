@@ -3,7 +3,7 @@
 namespace CreateProcessAsUser.Shared
 {
     [Serializable]
-    public enum EResult
+    public enum EResult : Int16
     {
         UNKNOWN = -1,
         OK,

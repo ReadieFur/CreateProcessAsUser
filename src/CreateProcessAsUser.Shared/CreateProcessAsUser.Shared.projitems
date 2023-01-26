@@ -11,6 +11,8 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)EAuthenticationMode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)EResult.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)MessageHelpers.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)MessageSerializationBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Properties.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SCredentials.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SMessage.cs" />

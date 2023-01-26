@@ -16,7 +16,8 @@ namespace CreateProcessAsUser.Client.Tests
                 authenticationMode = EAuthenticationMode.INHERIT
             };
 
-            SResult result = await Helper.CreateProcessAsUser(parameters, TimeSpan.FromSeconds(5));
+            var bs = Properties.BUFFER_SIZE;
+            SResult result = await Helper.CreateProcessAsUser(parameters);
 
             Assert.IsTrue(result.result == EResult.OK);
         }

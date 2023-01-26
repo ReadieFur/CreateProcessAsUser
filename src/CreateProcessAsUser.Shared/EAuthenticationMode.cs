@@ -3,7 +3,7 @@
 namespace CreateProcessAsUser.Shared
 {
     [Serializable]
-    public enum EAuthenticationMode
+    public enum EAuthenticationMode : Int16
     {
         /// <summary>
         /// Inherit the credentials of the caller.

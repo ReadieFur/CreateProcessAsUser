@@ -1,10 +1,11 @@
 //#define USER_DEBUG
 
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Reflection;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using CreateProcessAsUser.Shared;
@@ -37,7 +38,17 @@ namespace CreateProcessAsUser.Service
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            pipeServerManager = new(Properties.PIPE_NAME, Properties.BUFFER_SIZE);
+            PipeSecurity pipeSecurity = new();
+            //Allow local users to read and write to the pipe.
+            pipeSecurity.AddAccessRule(new PipeAccessRule(
+                new SecurityIdentifier(WellKnownSidType.LocalSid, null),
+                PipeAccessRights.ReadWrite, AccessControlType.Allow));
+            //Deny network users access to the pipe.
+            pipeSecurity.AddAccessRule(new PipeAccessRule(
+                new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
+                PipeAccessRights.FullControl, AccessControlType.Deny));
+
+            pipeServerManager = new(Properties.PIPE_NAME, Properties.BUFFER_SIZE, pipeSecurity: pipeSecurity);
             pipeServerManager.OnMessage += PipeServerManager_onMessage;
 
             return Task.CompletedTask;
@@ -53,10 +64,10 @@ namespace CreateProcessAsUser.Service
 
         private void PipeServerManager_onMessage(Guid id, ReadOnlyMemory<byte> data)
         {
-            SMessage formattedData = Helpers.Deserialize<SMessage>(data.ToArray());
+            SMessage formattedData = MessageHelpers.Deserialize(data);
             formattedData.result = SResult.Default();
 
-            if (pipeServerManager == null)
+            if (pipeServerManager == null || pipeServerManager.IsDisposed)
             {
                 //Return as the server has ended between receiving the message and now.
                 return;
@@ -66,13 +77,16 @@ namespace CreateProcessAsUser.Service
             {
                 case EAuthenticationMode.INHERIT:
                     {
-                        //Get the calling process's ID.
-                        ConcurrentDictionary<Guid, PipeServer> pipeServers = (ConcurrentDictionary<Guid, PipeServer>)typeof(PipeServerManager)
-                        .GetField("pipeServers", BindingFlags.NonPublic | BindingFlags.Instance)!
-                        .GetValue(pipeServerManager)!;
+                        //Get the calling process's PID.
+                        if (!pipeServerManager.PipeServers.TryGetValue(id, out PipeServer? clientPipe) || clientPipe == null)
+                        {
+                            formattedData.result.result = EResult.FAILED_TO_GET_CALLER_PID;
+                            goto sendResponse;
+                        }
+
                         PipeStream pipe = (PipeStream)typeof(PipeServer)
                             .GetProperty("_pipe", BindingFlags.NonPublic | BindingFlags.Instance)!
-                            .GetValue(pipeServers[id])!;
+                            .GetValue(clientPipe)!;
 
                         if (!kernel32.WinBase.GetNamedPipeClientProcessId(pipe.SafePipeHandle.DangerousGetHandle(), out uint clientPID))
                         {
@@ -95,7 +109,8 @@ namespace CreateProcessAsUser.Service
             }
 
         sendResponse:
-            pipeServerManager?.SendMessage(id, Helpers.Serialize(formattedData));
+            try { pipeServerManager?.SendMessage(id, MessageHelpers.Serialize(formattedData)); }
+            catch {}
         }
     }
 }
