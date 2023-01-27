@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="CSharpTools.Pipes">
+      <HintPath>O:\GitHub\ReadieFur\CSharpTools\src\CSharpTools.Pipes\bin\Release\netstandard2.0\CSharpTools.Pipes.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

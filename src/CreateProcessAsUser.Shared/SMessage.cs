@@ -8,11 +8,13 @@ namespace CreateProcessAsUser.Shared
         /// <summary>
         /// The parameters to use when creating the process.
         /// </summary>
-        public SParameters parameters;
+        public SParameters parameters = new();
 
         /// <summary>
         /// The result of the operation.
         /// </summary>
-        public SResult result;
+        public SResult result = new();
+
+        public SMessage() {}
     }
 }

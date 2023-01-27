@@ -102,7 +102,12 @@
       <DependentUpon>ServiceInstaller.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
-  <Import Project="..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.projitems" Label="Shared" />
+  <ItemGroup>
+    <ProjectReference Include="..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.csproj">
+      <Project>{3d7e4a29-ea0b-4dd0-a311-1c9605aeb1a4}</Project>
+      <Name>CreateProcessAsUser.Shared</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>SET ERRORLEVEL=0
@@ -111,7 +116,7 @@ net stop CreateProcessAsUser.Service
   </PropertyGroup>
   <PropertyGroup>
     <PostBuildEvent>xcopy /e /v /y "$(ProjectDir)$(OutDir)" "D:\kOFRe\Documents\Visual Studio\CreateProcessAsUser_Service"
-@rem net start CreateProcessAsUser.Service
+net start CreateProcessAsUser.Service
 </PostBuildEvent>
   </PropertyGroup>
 </Project>
