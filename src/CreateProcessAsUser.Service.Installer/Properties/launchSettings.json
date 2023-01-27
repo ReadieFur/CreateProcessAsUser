@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "CreateProcessAsUser.Service.Installer": {
-      "commandName": "Project",
-      "commandLineArgs": "\"D:\\kOFRe\\Documents\\Visual Studio\\CreateProcessAsUser_Service\\CreateProcessAsUser.Service.exe\""
-    }
-  }
-}
