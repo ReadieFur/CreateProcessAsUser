@@ -10,7 +10,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{100F6669-54FB-44F3-9D53-0C5DA17CCE9D}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CreateProcessAsUser.Client.Tests</RootNamespace>
     <AssemblyName>CreateProcessAsUser.Client.Tests</AssemblyName>
@@ -46,6 +46,10 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CSharpTools.Pipes, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>O:\GitHub\ReadieFur\CSharpTools\src\CSharpTools.Pipes\bin\Release\netstandard2.0\CSharpTools.Pipes.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.VisualStudio.TestPlatform.TestFramework, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\CreateProcessAsUser.Client\packages\MSTest.TestFramework.2.2.7\lib\net45\Microsoft.VisualStudio.TestPlatform.TestFramework.dll</HintPath>
     </Reference>
@@ -69,6 +73,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Program.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -80,6 +85,10 @@
     <ProjectReference Include="..\CreateProcessAsUser.Client\CreateProcessAsUser.Client.csproj">
       <Project>{61a775f5-5d79-4faa-abfb-a31fa09f177e}</Project>
       <Name>CreateProcessAsUser.Client</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.csproj">
+      <Project>{6f34ceb7-4a54-4414-a19e-b15035fdd406}</Project>
+      <Name>CreateProcessAsUser.Shared</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />

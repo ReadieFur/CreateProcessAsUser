@@ -32,10 +32,10 @@ namespace CreateProcessAsUser.Client
 
             pipeClient.OnMessage += (data) =>
             {
-                result = MessageHelpers.Deserialize(data).result;
+                result = Helpers.Deserialize<SMessage>(data.ToArray()).result;
                 continuationEvent.Set();
             };
-            pipeClient.SendMessage(MessageHelpers.Serialize(message));
+            pipeClient.SendMessage(Helpers.Serialize(message));
             await Task.Run(() => continuationEvent.Wait(timeout.Value, cancellationToken));
             if (!continuationEvent.IsSet)
             {

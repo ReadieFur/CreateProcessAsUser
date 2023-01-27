@@ -50,5 +50,24 @@ namespace advapi32
             public IntPtr hStdOutput;
             public IntPtr hStdError;
         }
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+
+        public const int NORMAL_PRIORITY_CLASS = 0x00000020;
+
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        public static extern bool CreateProcessWithLogonW(
+            string userName,
+            string domain,
+            string password,
+            int logonFlags,
+            string applicationName,
+            string commandLine,
+            int creationFlags,
+            IntPtr environment,
+            string currentDirectory,
+            ref STARTUPINFO startupInfo,
+            out PROCESS_INFORMATION processInfo);
     }
 }

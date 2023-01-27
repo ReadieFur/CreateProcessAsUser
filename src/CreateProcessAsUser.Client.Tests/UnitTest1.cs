@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CreateProcessAsUser.Shared;
+using CSharpTools.Pipes;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace CreateProcessAsUser.Client.Tests
 {
@@ -13,11 +14,16 @@ namespace CreateProcessAsUser.Client.Tests
         {
             SParameters parameters = new()
             {
-                authenticationMode = EAuthenticationMode.INHERIT
+                //authenticationMode = EAuthenticationMode.INHERIT,
+                authenticationMode = EAuthenticationMode.CREDENTIALS,
+                processInformation = new()
+                {
+                    //executablePath = "C:\\Windows\\System32\\notepad.exe",
+                    //workingDirectory = "C:\\Windows\\System32"
+                }
             };
 
-            var bs = Properties.BUFFER_SIZE;
-            SResult result = await Helper.CreateProcessAsUser(parameters);
+            SResult result = await Helper.CreateProcessAsUser(parameters, TimeSpan.FromSeconds(5));
 
             Assert.IsTrue(result.result == EResult.OK);
         }

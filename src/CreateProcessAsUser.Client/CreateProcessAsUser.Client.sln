@@ -5,9 +5,9 @@ VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateProcessAsUser.Client", "CreateProcessAsUser.Client.csproj", "{61A775F5-5D79-4FAA-ABFB-A31FA09F177E}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "CreateProcessAsUser.Shared", "..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.shproj", "{5DF3524E-8D10-4A9A-A0DC-47D159C0E37F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateProcessAsUser.Client.Tests", "..\CreateProcessAsUser.Client.Tests\CreateProcessAsUser.Client.Tests.csproj", "{100F6669-54FB-44F3-9D53-0C5DA17CCE9D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CreateProcessAsUser.Shared", "..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.csproj", "{6F34CEB7-4A54-4414-A19E-B15035FDD406}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,15 +23,15 @@ Global
 		{100F6669-54FB-44F3-9D53-0C5DA17CCE9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{100F6669-54FB-44F3-9D53-0C5DA17CCE9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{100F6669-54FB-44F3-9D53-0C5DA17CCE9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F34CEB7-4A54-4414-A19E-B15035FDD406}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F34CEB7-4A54-4414-A19E-B15035FDD406}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F34CEB7-4A54-4414-A19E-B15035FDD406}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F34CEB7-4A54-4414-A19E-B15035FDD406}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {227FC71E-9B70-475C-AACB-A443D40625D7}
-	EndGlobalSection
-	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.projitems*{5df3524e-8d10-4a9a-a0dc-47d159c0e37f}*SharedItemsImports = 13
-		..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.projitems*{61a775f5-5d79-4faa-abfb-a31fa09f177e}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal

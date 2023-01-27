@@ -18,6 +18,6 @@ namespace CreateProcessAsUser.Shared
         /// <summary>
         /// Use the provided logon token.
         /// </summary>
-        TOKEN
+        //TOKEN
     }
 }

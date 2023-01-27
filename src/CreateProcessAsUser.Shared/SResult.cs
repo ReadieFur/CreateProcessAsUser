@@ -16,7 +16,7 @@ namespace CreateProcessAsUser.Shared
         /// </summary>
         public EResult result;
 
-        internal static SResult Default() => new()
+        public static SResult Default() => new()
         {
             processId = -1,
             result = EResult.UNKNOWN

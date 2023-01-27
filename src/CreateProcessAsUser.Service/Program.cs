@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Configuration;
 using Microsoft.Extensions.Logging.EventLog;
 using CreateProcessAsUser.Service;
 
-#if !DEBUG || false
+#if !DEBUG || true
 if (Environment.UserInteractive)
 {
     Console.WriteLine("Cannot start setvice from the command line or debugger."

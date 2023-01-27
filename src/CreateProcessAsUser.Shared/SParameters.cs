@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 
 namespace CreateProcessAsUser.Shared
 {
@@ -21,5 +20,10 @@ namespace CreateProcessAsUser.Shared
         /// <para>This is only used if <see cref="authenticationMode"/> is set to <see cref="EAuthenticationMode.CREDENTIALS"/>.</para>
         /// </summary>
         public SCredentials credentials;
+
+        /// <summary>
+        /// The process information.
+        /// </summary>
+        public SProcessInformation processInformation;
     }
 }
