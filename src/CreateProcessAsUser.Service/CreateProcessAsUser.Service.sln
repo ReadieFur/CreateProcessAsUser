@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateProcessAsUser.Service", "CreateProcessAsUser.Service.csproj", "{647763F0-B345-477C-83FB-448CE53DCE66}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "CreateProcessAsUser.Shared", "..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.shproj", "{CDA3EA01-A474-44EE-97AD-48E7048B9341}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,5 +23,9 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BDC3E4F1-E97C-4BCD-BB6C-898E3A0F087C}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.projitems*{647763f0-b345-477c-83fb-448ce53dce66}*SharedItemsImports = 4
+		..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.projitems*{cda3ea01-a474-44ee-97ad-48e7048b9341}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal
