@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Text;
-using static CreateProcessAsUser.Service.External;
 
 #nullable enable
 namespace CreateProcessAsUser.Service
@@ -53,9 +52,9 @@ namespace CreateProcessAsUser.Service
                 return DEFAULT_RETURN_VALUE;
             }
 
-            uint procentrySize = (uint)Marshal.SizeOf<PROCESSENTRY32>();
+            uint procentrySize = (uint)Marshal.SizeOf<External.PROCESSENTRY32>();
             procentry.dwSize = procentrySize;
-            bool cont = Process32First(snapshot, ref procentry);
+            bool cont = External.Process32First(snapshot, ref procentry);
             uint parentPID = 0;
             uint currentProcessID = (uint)Process.GetCurrentProcess().Id;
             while (cont)
@@ -64,11 +63,13 @@ namespace CreateProcessAsUser.Service
                     parentPID = procentry.th32ParentProcessID;
 
                 procentry.dwSize = procentrySize;
-                cont = Process32Next(snapshot, ref procentry);
+                cont = External.Process32Next(snapshot, ref procentry);
             }
 
             //https://stackoverflow.com/questions/1933113/c-windows-how-to-get-process-path-from-its-pid
-            IntPtr parentHandle = OpenProcess((int)(ProcessAccessFlags.QueryInformation | ProcessAccessFlags.VirtualMemoryRead), false, parentPID);
+            IntPtr parentHandle = External.OpenProcess(
+                (int)(External.ProcessAccessFlags.QueryInformation | External.ProcessAccessFlags.VirtualMemoryRead),
+                false, parentPID);
             if (parentHandle == IntPtr.Zero)
             {
                 Debug.WriteLine($"Failed to get parent process handle. {Marshal.GetLastWin32Error()}");
@@ -76,7 +77,7 @@ namespace CreateProcessAsUser.Service
             }
 
             StringBuilder parentProcessPath = new(260);
-            if (GetModuleFileNameEx(parentHandle, IntPtr.Zero, parentProcessPath, parentProcessPath.Capacity) == 0)
+            if (External.GetModuleFileNameEx(parentHandle, IntPtr.Zero, parentProcessPath, parentProcessPath.Capacity) == 0)
             {
                 Debug.WriteLine($"Failed to get the parent process path. {Marshal.GetLastWin32Error()}");
                 return DEFAULT_RETURN_VALUE;
