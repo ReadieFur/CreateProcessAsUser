@@ -24,6 +24,7 @@ namespace CreateProcessAsUser.Service
 
         private PipeServerManager? pipeServerManager;
 
+        //Add a command line option to allow net users.
         public Service()
         {
             InitializeComponent();

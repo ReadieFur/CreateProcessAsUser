@@ -16,6 +16,7 @@ namespace CreateProcessAsUser.Shared
 
         public static string FromCharArray(this char[] buffer)
         {
+            //TODO: Check for a size value to use, if it is not found then fall back to terminating at the first null character.
             return new string(buffer).TrimEnd('\0');
         }
 

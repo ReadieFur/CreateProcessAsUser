@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Configuration.Install;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
+using System.Text;
+using static CreateProcessAsUser.Service.External;
 
 #nullable enable
 namespace CreateProcessAsUser.Service
@@ -16,16 +19,13 @@ namespace CreateProcessAsUser.Service
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 throw new PlatformNotSupportedException("This program is only supported on Windows.");
 
-            //Check if we are running as a service or not.
-            //We should also check that no command line arguments were passed as the service has none to use (for now anyway).
-            if (!Environment.UserInteractive && args.Length == 0)
-            {
+            //Check if we are running as a service (the parent process should be svchost.exe).
+            bool runningAsService = RunningAsService(); //Default to assume we are running as a service.
+
+            if (runningAsService)
                 RunService();
-            }
             else
-            {
                 CommandLineHelper(args);
-            }
         }
 
         private static void RunService()
@@ -33,9 +33,56 @@ namespace CreateProcessAsUser.Service
             ServiceBase[] ServicesToRun;
             ServicesToRun = new ServiceBase[]
             {
+                //Arguments passed to the service are injected by ServiceBase.
                 new Service()
             };
             ServiceBase.Run(ServicesToRun);
+        }
+
+        private static bool RunningAsService()
+        {
+            const bool DEFAULT_RETURN_VALUE = true; //Default to assume we are running as a service.
+
+            //https://www.codeproject.com/Articles/9893/Get-Parent-Process-PID
+            External.PROCESSENTRY32 procentry = new();
+
+            IntPtr snapshot = External.CreateToolhelp32Snapshot(External.SnapshotFlags.Process, 0);
+            if (snapshot == new IntPtr(-1))
+            {
+                Debug.WriteLine($"Invalid snapshot. {Marshal.GetLastWin32Error()}");
+                return DEFAULT_RETURN_VALUE;
+            }
+
+            uint procentrySize = (uint)Marshal.SizeOf<PROCESSENTRY32>();
+            procentry.dwSize = procentrySize;
+            bool cont = Process32First(snapshot, ref procentry);
+            uint parentPID = 0;
+            uint currentProcessID = (uint)Process.GetCurrentProcess().Id;
+            while (cont)
+            {
+                if (currentProcessID == procentry.th32ProcessID)
+                    parentPID = procentry.th32ParentProcessID;
+
+                procentry.dwSize = procentrySize;
+                cont = Process32Next(snapshot, ref procentry);
+            }
+
+            //https://stackoverflow.com/questions/1933113/c-windows-how-to-get-process-path-from-its-pid
+            IntPtr parentHandle = OpenProcess((int)(ProcessAccessFlags.QueryInformation | ProcessAccessFlags.VirtualMemoryRead), false, parentPID);
+            if (parentHandle == IntPtr.Zero)
+            {
+                Debug.WriteLine($"Failed to get parent process handle. {Marshal.GetLastWin32Error()}");
+                return DEFAULT_RETURN_VALUE;
+            }
+
+            StringBuilder parentProcessPath = new(260);
+            if (GetModuleFileNameEx(parentHandle, IntPtr.Zero, parentProcessPath, parentProcessPath.Capacity) == 0)
+            {
+                Debug.WriteLine($"Failed to get the parent process path. {Marshal.GetLastWin32Error()}");
+                return DEFAULT_RETURN_VALUE;
+            }
+
+            return parentProcessPath.ToString() == Path.Combine(Environment.SystemDirectory, "services.exe");
         }
 
         private static void CommandLineHelper(string[] args)
@@ -78,8 +125,6 @@ namespace CreateProcessAsUser.Service
                             + "\n\t\tInstalls the service. The service cannot be installed from a UNC path."
                         + "\n\n\t/uninstall"
                             + "\n\t\tUninstalls the service."
-                        + "\n\n\t/interactive"
-                            + "\n\t\tRuns the command line tool. If no option is passed and a UserInteractive session is detected then this option is used."
                     );
                     return;
                 }
