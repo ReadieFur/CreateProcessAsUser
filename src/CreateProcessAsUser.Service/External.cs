@@ -7,6 +7,82 @@ namespace CreateProcessAsUser.Service
     public static class External
     {
         #region DLLImports
+        [DllImport("Netapi32.dll", SetLastError = true)]
+        public extern static int NetUserGetLocalGroups(
+            [MarshalAs(UnmanagedType.LPWStr)] string servername,
+            [MarshalAs(UnmanagedType.LPWStr)] string username,
+            int level,
+            int flags,
+            out IntPtr bufptr,
+            int prefmaxlen,
+            out int entriesread,
+            out int totalentries);
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Auto)]
+        public static extern uint GetNamedSecurityInfo(
+            string pObjectName,
+            SE_OBJECT_TYPE ObjectType,
+            SECURITY_INFORMATION SecurityInfo,
+            out IntPtr pSidOwner,
+            out IntPtr pSidGroup,
+            out IntPtr pDacl,
+            out IntPtr pSacl,
+            out IntPtr pSecurityDescriptor);
+
+        [DllImport("authz.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        public static extern bool AuthzInitializeResourceManager(
+            int flags,
+            IntPtr pfnAccessCheck,
+            IntPtr pfnComputeDynamicGroups,
+            IntPtr pfnFreeDynamicGroups,
+            string name,
+            out IntPtr rm);
+
+        [DllImport("authz.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        public static extern bool AuthzInitializeContextFromSid(
+            int Flags,
+            IntPtr UserSid,
+            IntPtr AuthzResourceManager,
+            IntPtr pExpirationTime,
+            LUID Identitifier,
+            IntPtr DynamicGroupArgs,
+            out IntPtr pAuthzClientContext);
+
+        [DllImport("authz.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        public static extern bool AuthzAccessCheck(int flags,
+            IntPtr hAuthzClientContext,
+            ref AUTHZ_ACCESS_REQUEST pRequest,
+            IntPtr AuditEvent,
+            IntPtr pSecurityDescriptor,
+            byte[] OptionalSecurityDescriptorArray,
+            int OptionalSecurityDescriptorCount,
+            ref AUTHZ_ACCESS_REPLY pReply,
+            out IntPtr phAccessCheckResults);
+
+        [DllImport("Netapi32.dll")]
+        public extern static uint NetQueryDisplayInformation(
+            [MarshalAs(UnmanagedType.LPWStr)] string serverName,
+            uint Level,
+            uint ResumeHandle,
+            uint EntriesRequested,
+            uint prefMaxLength,
+            out uint entriesRead,
+            out IntPtr Buffer);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NET_DISPLAY_USER
+        {
+            public IntPtr usri1_name;
+            public IntPtr usri1_comment;
+            public uint usri1_flags;
+            public IntPtr usri1_full_name;
+            public uint usri1_user_id;
+            public uint usri1_next_index;
+        }
+
+        [DllImport("netapi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern int NetApiBufferFree(IntPtr pBuffer);
+
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
@@ -68,6 +144,46 @@ namespace CreateProcessAsUser.Service
         #endregion
 
         #region Structs
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct LOCALGROUP_USERS_INFO_0
+        {
+            public string groupname;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto, Pack = 4)]
+        public struct LUID
+        {
+            public uint LowPart;
+            public int HighPart;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct AUTHZ_ACCESS_REQUEST
+        {
+            public int DesiredAccess;
+            public byte[] PrincipalSelfSid;
+            public OBJECT_TYPE_LIST[] ObjectTypeList;
+            public int ObjectTypeListLength;
+            public IntPtr OptionalArguments;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct OBJECT_TYPE_LIST
+        {
+            OBJECT_TYPE_LEVEL Level;
+            int Sbz;
+            IntPtr ObjectType;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct AUTHZ_ACCESS_REPLY
+        {
+            public int ResultListLength;
+            public IntPtr GrantedAccessMask;
+            public IntPtr SaclEvaluationResults;
+            public IntPtr Error;
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct PROCESSENTRY32
         {
@@ -117,6 +233,73 @@ namespace CreateProcessAsUser.Service
         #endregion
 
         #region Enums
+        [Flags]
+        public enum SECURITY_INFORMATION : uint
+        {
+            OWNER_SECURITY_INFORMATION = 0x00000001,
+            GROUP_SECURITY_INFORMATION = 0x00000002,
+            DACL_SECURITY_INFORMATION = 0x00000004,
+            SACL_SECURITY_INFORMATION = 0x00000008,
+            UNPROTECTED_SACL_SECURITY_INFORMATION = 0x10000000,
+            UNPROTECTED_DACL_SECURITY_INFORMATION = 0x20000000,
+            PROTECTED_SACL_SECURITY_INFORMATION = 0x40000000,
+            PROTECTED_DACL_SECURITY_INFORMATION = 0x80000000
+        }
+
+        public enum ACCESS_MASK : uint
+        {
+            FILE_TRAVERSE = 0x20,
+            FILE_LIST_DIRECTORY = 0x1,
+            FILE_READ_DATA = 0x1,
+            FILE_READ_ATTRIBUTES = 0x80,
+            FILE_READ_EA = 0x8,
+            FILE_ADD_FILE = 0x2,
+            FILE_WRITE_DATA = 0x2,
+            FILE_ADD_SUBDIRECTORY = 0x4,
+            FILE_APPEND_DATA = 0x4,
+            FILE_WRITE_ATTRIBUTES = 0x100,
+            FILE_WRITE_EA = 0x10,
+            FILE_DELETE_CHILD = 0x40,
+            DELETE = 0x10000,
+            READ_CONTROL = 0x20000,
+            WRITE_DAC = 0x40000,
+            WRITE_OWNER = 0x80000,
+
+            //User defined
+            FULL_CONTROL = FILE_TRAVERSE | FILE_LIST_DIRECTORY | FILE_READ_DATA
+                | FILE_READ_ATTRIBUTES | FILE_READ_EA | FILE_ADD_FILE
+                | FILE_WRITE_DATA | FILE_ADD_SUBDIRECTORY | FILE_APPEND_DATA
+                | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | FILE_DELETE_CHILD
+                | DELETE | READ_CONTROL | WRITE_DAC | WRITE_OWNER
+
+            ////////FILE_EXECUTE =0x20
+        }
+
+        public enum SE_OBJECT_TYPE
+        {
+            SE_UNKNOWN_OBJECT_TYPE = 0,
+            SE_FILE_OBJECT,
+            SE_SERVICE,
+            SE_PRINTER,
+            SE_REGISTRY_KEY,
+            SE_LMSHARE,
+            SE_KERNEL_OBJECT,
+            SE_WINDOW_OBJECT,
+            SE_DS_OBJECT,
+            SE_DS_OBJECT_ALL,
+            SE_PROVIDER_DEFINED_OBJECT,
+            SE_WMIGUID_OBJECT,
+            SE_REGISTRY_WOW64_32KEY
+        }
+
+        public enum OBJECT_TYPE_LEVEL : int
+        {
+            ACCESS_OBJECT_GUID = 0,
+            ACCESS_PROPERTY_SET_GUID = 1,
+            ACCESS_PROPERTY_GUID = 2,
+            ACCESS_MAX_LEVEL = 4
+        }
+
         [Flags]
         public enum TOKEN_ACCESS : uint
         {

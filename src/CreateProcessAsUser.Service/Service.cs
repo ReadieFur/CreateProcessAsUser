@@ -92,7 +92,7 @@ namespace CreateProcessAsUser.Service
 
             SMessage formattedData;
             try { formattedData = CSharpTools.Pipes.Helpers.Deserialize<SMessage>(data.ToArray()); }
-            catch
+            catch (Exception)
             {
                 formattedData = new();
                 goto sendResponse;
