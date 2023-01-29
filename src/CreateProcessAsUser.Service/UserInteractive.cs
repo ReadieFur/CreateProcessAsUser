@@ -1,5 +1,4 @@
-﻿using CreateProcessAsUser.Shared;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration.Install;
 using System.IO;
@@ -9,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Principal;
 using System.ServiceProcess;
+using CreateProcessAsUser.Shared;
 
 #nullable enable
 namespace CreateProcessAsUser.Service
