@@ -142,6 +142,8 @@ namespace CreateProcessAsUser.Service
                 if (string.IsNullOrWhiteSpace(workingDirectory))
                     workingDirectory = Path.GetDirectoryName(applicationName);
 
+                //This step is to verify the client's credentials. Tokens are not duplicated from here.
+                string clientUsername;
                 switch (formattedData.parameters.authenticationMode)
                 {
                     case EAuthenticationMode.INHERIT:
@@ -175,19 +177,37 @@ namespace CreateProcessAsUser.Service
                                 return;
                             }
 
-                            //Duplicate the token to be used for the new process.
-                            if (!External.DuplicateTokenEx(
-                                clientProcessToken,
-                                (int)(External.TOKEN_ACCESS.TOKEN_QUERY | External.TOKEN_ACCESS.TOKEN_DUPLICATE | External.TOKEN_ACCESS.TOKEN_ASSIGN_PRIMARY),
-                                IntPtr.Zero,
-                                (int)External.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
-                                (int)External.TOKEN_TYPE.TokenPrimary,
-                                out token))
+                            //Get the owning user of this process.
+                            //https://stackoverflow.com/questions/2686096/c-get-username-from-process
+                            //https://www.pinvoke.net/default.aspx/advapi32.gettokeninformation
+                            //This first call gets the size required to store the token information.
+                            External.GetTokenInformation(clientProcessToken, External.TOKEN_INFORMATION_CLASS.TokenUser,
+                                IntPtr.Zero, 0, out uint tokenInformationBufferSize);
+                            IntPtr tokenInformationPtr = Marshal.AllocHGlobal((int)tokenInformationBufferSize);
+                            otherOpenHandles.Add(tokenInformationPtr);
+                            if (!External.GetTokenInformation(clientProcessToken, External.TOKEN_INFORMATION_CLASS.TokenUser,
+                                tokenInformationPtr, tokenInformationBufferSize, out _))
                             {
                                 Debug.WriteLine(Marshal.GetLastWin32Error());
                                 formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
                                 return;
                             }
+
+                            External.TOKEN_USER tokenUser = Marshal.PtrToStructure<External.TOKEN_USER>(tokenInformationPtr);
+
+                            IntPtr strPtr = IntPtr.Zero;
+                            otherOpenHandles.Add(strPtr);
+                            if (!External.ConvertSidToStringSid(tokenUser.User.Sid, out strPtr))
+                            {
+                                Debug.WriteLine(Marshal.GetLastWin32Error());
+                                formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
+                                return;
+                            }
+
+                            string sid = Marshal.PtrToStringAuto(strPtr);
+                            External.LocalFree(strPtr);
+
+                            clientUsername = new SecurityIdentifier(sid).Translate(typeof(NTAccount)).ToString();
                             break;
                         }
                     case EAuthenticationMode.CREDENTIALS:
@@ -198,17 +218,127 @@ namespace CreateProcessAsUser.Service
                                 formattedData.parameters.credentials.password.FromCharArray(),
                                 (int)External.LOGON_TYPE.LOGON32_LOGON_INTERACTIVE,
                                 (int)External.LOGON_PROVIDER.LOGON32_PROVIDER_DEFAULT,
-                                out token))
+                                out _))
                             {
                                 Debug.WriteLine(Marshal.GetLastWin32Error());
                                 formattedData.result.result = EResult.INVALID_CREDENTIALS;
                                 return;
                             }
+
+                            clientUsername = formattedData.parameters.credentials.domain.FromCharArray() + "\\"
+                                + formattedData.parameters.credentials.username.FromCharArray();
                             break;
                         }
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+
+                //Get the active desktop sessions.
+                //Modified from source at: https://github.com/murrayju/CreateProcessAsUser/blob/master/ProcessExtensions/ProcessExtensions.cs#L174-L189
+                IntPtr sessionInfoPtr = IntPtr.Zero;
+                otherOpenHandles.Add(sessionInfoPtr);
+                int sessionCount = 0;
+                List<(string, uint)> activeSessions = new();
+                if (External.WTSEnumerateSessions(IntPtr.Zero, 0, 1, ref sessionInfoPtr, ref sessionCount) != 0)
+                {
+                    int arrayElementSize = Marshal.SizeOf(typeof(External.WTS_SESSION_INFO));
+                    IntPtr currentSessionInfoPtr = sessionInfoPtr;
+                    otherOpenHandles.Add(currentSessionInfoPtr);
+
+                    for (int i = 0; i < sessionCount; i++)
+                    {
+                        External.WTS_SESSION_INFO currentSessionInfo = Marshal.PtrToStructure<External.WTS_SESSION_INFO>(currentSessionInfoPtr);
+                        currentSessionInfoPtr += arrayElementSize;
+
+                        if (currentSessionInfo.State != External.WTS_CONNECTSTATE_CLASS.WTSActive)
+                            continue;
+
+                        string? username = QuerySessionUsername(currentSessionInfo.SessionID);
+                        if (string.IsNullOrEmpty(username))
+                            continue;
+
+                        activeSessions.Add((username!, currentSessionInfo.SessionID));
+                    }
+                }
+                if (activeSessions.Count == 0)
+                {
+                    //Fall back to using an old method to get the active desktop session (not session**S**).
+                    //This is more reliable according to the MS docs however it won't get all sessions.
+                    uint sessionID = External.WTSGetActiveConsoleSessionId();
+                    if (sessionID != 0xFFFFFFFF)
+                    {
+                        string? username = QuerySessionUsername(sessionID);
+                        if (!string.IsNullOrEmpty(username))
+                            activeSessions.Add((username!, sessionID));
+                    }
+                }
+                if (activeSessions.Count == 0)
+                {
+                    formattedData.result.result = EResult.FAILED_TO_GET_DESKTOP_SESSIONS;
+                    return;
+                }
+
+                //Check for an active desktop for the provided user.
+                int sessionIndex = activeSessions.FindIndex(session => session.Item1.ToLower() == clientUsername.ToLower());
+                if (sessionIndex == -1)
+                {
+                    formattedData.result.result = EResult.FAILED_TO_GET_DESKTOP_SESSIONS;
+                    return;
+                }
+
+                IntPtr impersonationToken = IntPtr.Zero;
+                otherOpenHandles.Add(impersonationToken);
+                if (External.WTSQueryUserToken(activeSessions[sessionIndex].Item2, ref impersonationToken) == 0)
+                {
+                    Debug.WriteLine(Marshal.GetLastWin32Error());
+                    formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
+                    return;
+                }
+
+                //Convert the impersonation token to a primary token.
+                if (!External.DuplicateTokenEx(
+                    impersonationToken,
+                    (int)(External.TOKEN_ACCESS.TOKEN_QUERY | External.TOKEN_ACCESS.TOKEN_DUPLICATE
+                    | External.TOKEN_ACCESS.TOKEN_ASSIGN_PRIMARY | External.TOKEN_ACCESS.TOKEN_ADJUST_PRIVILEGES),
+                    IntPtr.Zero,
+                    (int)External.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
+                    (int)External.TOKEN_TYPE.TokenPrimary,
+                    out token))
+                {
+                    Debug.WriteLine(Marshal.GetLastWin32Error());
+                    formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
+                    return;
+                }
+
+                //Look into https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_information_class
+                //To possibly create a process as a different user and place the process under a different user's session.
+                //Or look into this https://learn.microsoft.com/en-gb/windows/win32/api/winnt/ns-winnt-security_descriptor?redirectedfrom=MSDN
+                //Which may be able to set the owner of the process?
+
+                //https://learn.microsoft.com/en-us/windows/win32/secauthz/enabling-and-disabling-privileges-in-c--
+                //TODO:
+                /*External.TOKEN_PRIVILEGES tp = new();
+                External.LUID luid = new();
+                if (External.LookupPrivilegeValue(null, "SeAssignPrimaryTokenPrivilege", ref luid))
+                {
+                    tp.PrivilegeCount = 1;
+                    tp.Privileges = new LUID_AND_ATTRIBUTES[1];
+                    tp.Privileges[0].Luid = luid;
+                    tp.Privileges[0].Attributes = 0x00000002;
+
+                    if (External.AdjustTokenPrivileges(token, false, ref tp, (uint)Marshal.SizeOf<External.TOKEN_PRIVILEGES>(), IntPtr.Zero, out _))
+                    {
+                        Debug.WriteLine("+");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("|" + Marshal.GetLastWin32Error());
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine(Marshal.GetLastWin32Error());
+                }*/
 
                 //Load the users enviroment variables.
                 if (!External.CreateEnvironmentBlock(ref enviroment, token, false))
@@ -260,14 +390,53 @@ namespace CreateProcessAsUser.Service
                 if (processInformation.hProcess != IntPtr.Zero)
                     External.CloseHandle(processInformation.hProcess);
                 foreach (IntPtr handle in otherOpenHandles)
+                {
                     if (handle != IntPtr.Zero)
-                        External.CloseHandle(handle);
+                    {
+                        try { External.CloseHandle(handle); }
+                        catch (Exception) {}
+                    }
+                }
             }
+        }
+
+        private static string? QuerySessionUsername(uint sessionID)
+        {
+            //Query the session information.
+            //Modified from source at: https://www.pinvoke.net/default.aspx/wtsapi32.wtsquerysessioninformation
+            IntPtr buffer;
+            int strLen;
+            string username = string.Empty;
+            if (!(External.WTSQuerySessionInformation(IntPtr.Zero, (int)sessionID, External.WTS_INFO_CLASS.WTSUserName, out buffer, out strLen) && strLen > 1))
+                return null;
+
+            //Don't need length as these are null terminated strings.
+            username = Marshal.PtrToStringAnsi(buffer);
+            External.WTSFreeMemory(buffer);
+
+            if (!(External.WTSQuerySessionInformation(IntPtr.Zero, (int)sessionID, External.WTS_INFO_CLASS.WTSDomainName, out buffer, out strLen) && strLen > 1))
+                return null;
+
+            //Prepend domain name.
+            username = Marshal.PtrToStringAnsi(buffer) + "\\" + username;
+            External.WTSFreeMemory(buffer);
+
+            return username;
         }
 
 #if DEBUG
         private static void Testing()
         {
+#if true
+            while (!Debugger.IsAttached)
+                Thread.Sleep(100);
+            Debugger.Break();
+#endif
+
+            do
+            {
+            }
+            while (false);
         }
 #endif
     }

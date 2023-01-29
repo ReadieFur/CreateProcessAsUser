@@ -506,7 +506,10 @@ namespace CreateProcessAsUser.Service
                         //Use the local domain.
                         domain = WindowsIdentity.GetCurrent().Name.Split('\\')[0];
                     }
-                    domain = str;
+                    else
+                    {
+                        domain = str;
+                    }
                     return true;
                 });
 
@@ -557,7 +560,11 @@ namespace CreateProcessAsUser.Service
             try
             {
                 //Run the method synchronously (fine for an application as simple as this (also because I couldn't be bothered to go back and add async support).
-                result = Client.Helper.CreateProcessAsUser(parameters, TimeSpan.FromSeconds(5))
+                result = Client.Helper.CreateProcessAsUser(parameters
+#if !DEBUG || false
+                    , TimeSpan.FromSeconds(5)
+#endif
+                    )
                     .ConfigureAwait(false)
                     .GetAwaiter()
                     .GetResult();

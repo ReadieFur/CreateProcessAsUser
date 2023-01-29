@@ -7,6 +7,53 @@ namespace CreateProcessAsUser.Service
     public static class External
     {
         #region DLLImports
+        [DllImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool AdjustTokenPrivileges(
+            IntPtr TokenHandle,
+            [MarshalAs(UnmanagedType.Bool)] bool DisableAllPrivileges,
+            ref TOKEN_PRIVILEGES NewState,
+            UInt32 BufferLengthInBytes,
+            IntPtr PreviousState,
+            out UInt32 ReturnLengthInBytes);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern bool LookupPrivilegeValue(string lpSystemName, string lpName, ref LUID lpLuid);
+
+        [DllImport("Wtsapi32.dll", SetLastError = true)]
+        public static extern uint WTSQueryUserToken(uint SessionId, ref IntPtr phToken);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr LocalFree(IntPtr hMem);
+
+        [DllImport("advapi32", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern bool ConvertSidToStringSid(IntPtr pSID, out IntPtr ptrSid);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern bool GetTokenInformation(
+            IntPtr TokenHandle,
+            TOKEN_INFORMATION_CLASS TokenInformationClass,
+            IntPtr TokenInformation,
+            uint TokenInformationLength,
+            out uint ReturnLength);
+
+        [DllImport("wtsapi32.dll", SetLastError = true)]
+        public static extern int WTSEnumerateSessions(
+            IntPtr hServer,
+            int Reserved,
+            int Version,
+            ref IntPtr ppSessionInfo,
+            ref int pCount);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern uint WTSGetActiveConsoleSessionId();
+
+        [DllImport("Wtsapi32.dll", SetLastError = true)]
+        public static extern bool WTSQuerySessionInformation(IntPtr hServer, int sessionId, WTS_INFO_CLASS wtsInfoClass, out IntPtr ppBuffer, out int pBytesReturned);
+
+        [DllImport("Wtsapi32.dll", SetLastError = true)]
+        public static extern void WTSFreeMemory(IntPtr pointer);
+
         [DllImport("Netapi32.dll", SetLastError = true)]
         public extern static int NetUserGetLocalGroups(
             [MarshalAs(UnmanagedType.LPWStr)] string servername,
@@ -18,7 +65,7 @@ namespace CreateProcessAsUser.Service
             out int entriesread,
             out int totalentries);
 
-        [DllImport("advapi32.dll", CharSet = CharSet.Auto)]
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern uint GetNamedSecurityInfo(
             string pObjectName,
             SE_OBJECT_TYPE ObjectType,
@@ -68,17 +115,6 @@ namespace CreateProcessAsUser.Service
             uint prefMaxLength,
             out uint entriesRead,
             out IntPtr Buffer);
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct NET_DISPLAY_USER
-        {
-            public IntPtr usri1_name;
-            public IntPtr usri1_comment;
-            public uint usri1_flags;
-            public IntPtr usri1_full_name;
-            public uint usri1_user_id;
-            public uint usri1_next_index;
-        }
 
         [DllImport("netapi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern int NetApiBufferFree(IntPtr pBuffer);
@@ -144,6 +180,55 @@ namespace CreateProcessAsUser.Service
         #endregion
 
         #region Structs
+        public struct TOKEN_PRIVILEGES
+        {
+            public int PrivilegeCount;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+            public LUID_AND_ATTRIBUTES[] Privileges;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 4)]
+        public struct LUID_AND_ATTRIBUTES
+        {
+            public LUID Luid;
+            public UInt32 Attributes;
+        }
+
+        public struct TOKEN_USER
+        {
+            public SID_AND_ATTRIBUTES User;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SID_AND_ATTRIBUTES
+        {
+
+            public IntPtr Sid;
+            public int Attributes;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WTS_SESSION_INFO
+        {
+            public readonly UInt32 SessionID;
+
+            [MarshalAs(UnmanagedType.LPStr)]
+            public readonly String pWinStationName;
+
+            public readonly WTS_CONNECTSTATE_CLASS State;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NET_DISPLAY_USER
+        {
+            public IntPtr usri1_name;
+            public IntPtr usri1_comment;
+            public uint usri1_flags;
+            public IntPtr usri1_full_name;
+            public uint usri1_user_id;
+            public uint usri1_next_index;
+        }
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct LOCALGROUP_USERS_INFO_0
         {
@@ -233,6 +318,87 @@ namespace CreateProcessAsUser.Service
         #endregion
 
         #region Enums
+        public enum TOKEN_INFORMATION_CLASS
+        {
+            TokenUser = 1,
+            TokenGroups,
+            TokenPrivileges,
+            TokenOwner,
+            TokenPrimaryGroup,
+            TokenDefaultDacl,
+            TokenSource,
+            TokenType,
+            TokenImpersonationLevel,
+            TokenStatistics,
+            TokenRestrictedSids,
+            TokenSessionId,
+            TokenGroupsAndPrivileges,
+            TokenSessionReference,
+            TokenSandBoxInert,
+            TokenAuditPolicy,
+            TokenOrigin,
+            TokenElevationType,
+            TokenLinkedToken,
+            TokenElevation,
+            TokenHasRestrictions,
+            TokenAccessInformation,
+            TokenVirtualizationAllowed,
+            TokenVirtualizationEnabled,
+            TokenIntegrityLevel,
+            TokenUIAccess,
+            TokenMandatoryPolicy,
+            TokenLogonSid,
+            MaxTokenInfoClass
+        }
+
+        public enum WTS_CONNECTSTATE_CLASS
+        {
+            WTSActive,
+            WTSConnected,
+            WTSConnectQuery,
+            WTSShadow,
+            WTSDisconnected,
+            WTSIdle,
+            WTSListen,
+            WTSReset,
+            WTSDown,
+            WTSInit
+        }
+
+        public enum WTS_INFO_CLASS
+        {
+            WTSInitialProgram = 0,
+            WTSApplicationName = 1,
+            WTSWorkingDirectory = 2,
+            WTSOEMId = 3,
+            WTSSessionId = 4,
+            WTSUserName = 5,
+            WTSWinStationName = 6,
+            WTSDomainName = 7,
+            WTSConnectState = 8,
+            WTSClientBuildNumber = 9,
+            WTSClientName = 10,
+            WTSClientDirectory = 11,
+            WTSClientProductId = 12,
+            WTSClientHardwareId = 13,
+            WTSClientAddress = 14,
+            WTSClientDisplay = 15,
+            WTSClientProtocolType = 16,
+            WTSIdleTime = 17,
+            WTSLogonTime = 18,
+            WTSIncomingBytes = 19,
+            WTSOutgoingBytes = 20,
+            WTSIncomingFrames = 21,
+            WTSOutgoingFrames = 22,
+            WTSClientInfo = 23,
+            WTSSessionInfo = 24,
+            WTSSessionInfoEx = 25,
+            WTSConfigInfo = 26,
+            WTSValidationInfo = 27,
+            WTSSessionAddressV4 = 28,
+            WTSIsRemoteSession = 29
+        }
+
         [Flags]
         public enum SECURITY_INFORMATION : uint
         {
