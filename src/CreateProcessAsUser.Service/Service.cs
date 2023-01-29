@@ -1,10 +1,11 @@
-﻿#define WAIT_FOR_DEBUGGER
+﻿//#define WAIT_FOR_DEBUGGER
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
@@ -55,10 +56,21 @@ namespace CreateProcessAsUser.Service
                 pipeSecurity.AddAccessRule(new PipeAccessRule(
                     new SecurityIdentifier(WellKnownSidType.LocalSid, null),
                     PipeAccessRights.ReadWrite, AccessControlType.Allow));
-                //Deny network users access to the pipe.
-                pipeSecurity.AddAccessRule(new PipeAccessRule(
-                    new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
-                    PipeAccessRights.FullControl, AccessControlType.Deny));
+                
+                if (args.Any(arg => arg.ToLower() == "/AllowNetUsers".ToLower()))
+                {
+                    //Allow network users to access the pipe.
+                    pipeSecurity.AddAccessRule(new PipeAccessRule(
+                        new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
+                        PipeAccessRights.ReadWrite, AccessControlType.Allow));
+                }
+                else
+                {
+                    //Deny network users access to the pipe.
+                    pipeSecurity.AddAccessRule(new PipeAccessRule(
+                        new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
+                        PipeAccessRights.FullControl, AccessControlType.Deny));
+                }
 
                 pipeServerManager = new(Properties.PIPE_NAME, Properties.BUFFER_SIZE, pipeSecurity: pipeSecurity);
                 pipeServerManager.OnMessage += PipeServerManager_OnMessage;
