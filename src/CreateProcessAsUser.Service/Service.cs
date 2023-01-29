@@ -75,6 +75,10 @@ namespace CreateProcessAsUser.Service
                 pipeServerManager = new(Properties.PIPE_NAME, Properties.BUFFER_SIZE, pipeSecurity: pipeSecurity);
                 pipeServerManager.OnMessage += PipeServerManager_OnMessage;
 
+#if DEBUG && true
+                Task.Run(Testing);
+#endif
+
 #if DEBUG && WAIT_FOR_DEBUGGER
             });
 #else
@@ -260,5 +264,11 @@ namespace CreateProcessAsUser.Service
                         External.CloseHandle(handle);
             }
         }
+
+#if DEBUG
+        private static void Testing()
+        {
+        }
+#endif
     }
 }
