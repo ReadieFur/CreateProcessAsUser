@@ -8,7 +8,7 @@ namespace CreateProcessAsUser.Shared
         /// <summary>
         /// The ID of the process that was created, or -1 if the operation failed.
         /// </summary>
-        public Int32 processId = -1;
+        public Int32 processID = -1;
 
         //TODO: Use an enum.
         /// <summary>

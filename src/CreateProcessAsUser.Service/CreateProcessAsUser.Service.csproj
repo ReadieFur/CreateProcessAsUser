@@ -73,6 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandAttributes.cs" />
     <Compile Include="Service.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -88,6 +89,7 @@
       <DependentUpon>ServiceInstaller.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UserInteractive.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -103,19 +105,24 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CreateProcessAsUser.Client\CreateProcessAsUser.Client.csproj">
+      <Project>{2382e14e-982d-405a-ad54-4aecf9e6a15b}</Project>
+      <Name>CreateProcessAsUser.Client</Name>
+    </ProjectReference>
     <ProjectReference Include="..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.csproj">
       <Project>{3d7e4a29-ea0b-4dd0-a311-1c9605aeb1a4}</Project>
       <Name>CreateProcessAsUser.Shared</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>SET ERRORLEVEL=0
-net stop CreateProcessAsUser.Service
+@rem net stop CreateProcessAsUser.Service
 </PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>xcopy /e /v /y "$(ProjectDir)$(OutDir)" "H:\Program Files\CreateProcessAsUser.Service"
+    <PostBuildEvent>@rem xcopy /e /v /y "$(ProjectDir)$(OutDir)" "H:\Program Files\CreateProcessAsUser.Service"
 @rem net start CreateProcessAsUser.Service
 </PostBuildEvent>
   </PropertyGroup>

@@ -5,7 +5,9 @@ VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateProcessAsUser.Service", "CreateProcessAsUser.Service.csproj", "{647763F0-B345-477C-83FB-448CE53DCE66}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreateProcessAsUser.Shared", "..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.csproj", "{3D7E4A29-EA0B-4DD0-A311-1C9605AEB1A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CreateProcessAsUser.Shared", "..\CreateProcessAsUser.Shared\CreateProcessAsUser.Shared.csproj", "{3D7E4A29-EA0B-4DD0-A311-1C9605AEB1A4}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CreateProcessAsUser.Client", "..\CreateProcessAsUser.Client\CreateProcessAsUser.Client.csproj", "{2382E14E-982D-405A-AD54-4AECF9E6A15B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{3D7E4A29-EA0B-4DD0-A311-1C9605AEB1A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D7E4A29-EA0B-4DD0-A311-1C9605AEB1A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D7E4A29-EA0B-4DD0-A311-1C9605AEB1A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2382E14E-982D-405A-AD54-4AECF9E6A15B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2382E14E-982D-405A-AD54-4AECF9E6A15B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2382E14E-982D-405A-AD54-4AECF9E6A15B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2382E14E-982D-405A-AD54-4AECF9E6A15B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

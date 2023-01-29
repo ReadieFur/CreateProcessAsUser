@@ -142,7 +142,7 @@ namespace CreateProcessAsUser.Service
                     //Get the process information.
                     Process clientProcess;
                     try { clientProcess = Process.GetProcessById((int)clientProcessID); }
-                    catch { return; }
+                    catch (Exception) { return; }
                     if (clientProcess.HasExited)
                         return;
 
@@ -225,12 +225,12 @@ namespace CreateProcessAsUser.Service
                 goto sendResponse;
             }
 
-            formattedData.result.processId = processInformation.dwProcessId;
+            formattedData.result.processID = processInformation.dwProcessId;
             formattedData.result.result = EResult.CREATED_PROCESS;
 
         sendResponse:
             try { pipeServerManager?.SendMessage(id, CSharpTools.Pipes.Helpers.Serialize(formattedData)); }
-            catch {}
+            catch (Exception) {}
 
         cleanup:
 
