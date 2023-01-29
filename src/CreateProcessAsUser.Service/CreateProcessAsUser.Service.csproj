@@ -115,8 +115,8 @@ net stop CreateProcessAsUser.Service
 </PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>xcopy /e /v /y "$(ProjectDir)$(OutDir)" "D:\kOFRe\Documents\Visual Studio\CreateProcessAsUser_Service"
-net start CreateProcessAsUser.Service
+    <PostBuildEvent>xcopy /e /v /y "$(ProjectDir)$(OutDir)" "H:\Program Files\CreateProcessAsUser.Service"
+@rem net start CreateProcessAsUser.Service
 </PostBuildEvent>
   </PropertyGroup>
 </Project>

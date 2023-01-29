@@ -13,7 +13,7 @@ namespace CreateProcessAsUser.Shared
         /// <summary>
         /// Whether or not to run the new process with elevated privileges.
         /// </summary>
-        public Boolean elevated = false;
+        //public EExecutionLevel elevated = EExecutionLevel.User;
 
         /// <summary>
         /// The string credentials to use for authentication.

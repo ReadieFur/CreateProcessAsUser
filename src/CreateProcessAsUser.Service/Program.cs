@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.ServiceProcess;
 using System.Text;
 
@@ -88,33 +89,33 @@ namespace CreateProcessAsUser.Service
 
         private static void CommandLineHelper(string[] args)
         {
-            //Detect if the service is installed or not.
-            bool isInstalled = ServiceController.GetServices().Any(s => s.ServiceName == AssemblyInfo.TITLE);
+            //Detect if the service is registered or not.
+            bool isRegistered = ServiceController.GetServices().Any(s => s.ServiceName == AssemblyInfo.TITLE);
 
             if (args.Length > 0)
             {
-                if (args[0] == "/install")
+                if (args[0] == "/register")
                 {
-                    if (isInstalled)
+                    if (isRegistered)
                     {
-                        Console.WriteLine("The service is already installed.");
+                        Console.WriteLine("The service is already registered.");
                         Environment.Exit(-1);
                     }
                     else
                     {
-                        InstallService(true);
+                        RegisterService(true);
                     }
                 }
-                else if (args[0] == "/uninstall")
+                else if (args[0] == "/unregister")
                 {
-                    if (!isInstalled)
+                    if (!isRegistered)
                     {
-                        Console.WriteLine("The service is not installed.");
+                        Console.WriteLine("The service is not registered.");
                         Environment.Exit(-1);
                     }
                     else
                     {
-                        InstallService(false);
+                        RegisterService(false);
                     }
                 }
                 else if (args[0] == "/help")
@@ -122,10 +123,10 @@ namespace CreateProcessAsUser.Service
                     Console.WriteLine($"Usage: {Path.GetFileName(Assembly.GetExecutingAssembly().Location)} [Argument] [Options...]"
                         + "\n\t/help"
                             + "\n\t\tShows this message."
-                        + "\n\n\t/install"
-                            + "\n\t\tInstalls the service. The service cannot be installed from a UNC path."
-                        + "\n\n\t/uninstall"
-                            + "\n\t\tUninstalls the service."
+                        + "\n\n\t/register"
+                            + "\n\t\tRegisters the service. The service cannot be registered from a UNC path."
+                        + "\n\n\t/unregister"
+                            + "\n\t\tUnregisters the service."
                     );
                     return;
                 }
@@ -148,10 +149,10 @@ namespace CreateProcessAsUser.Service
                             Console.WriteLine("Help:"
                                 + "\n\thelp"
                                     + "\n\t\tShows this message."
-                                + "\n\n\tinstall"
-                                    + "\n\t\tInstalls the service. The service cannot be installed from a UNC path."
-                                + "\n\n\tuninstall"
-                                    + "\n\t\tUninstalls the service."
+                                + "\n\n\tregister"
+                                    + "\n\t\tRegisters the service. The service cannot be registered from a UNC path."
+                                + "\n\n\tunregister"
+                                    + "\n\t\tUnregisters the service."
                                 + "\n\n\tlaunch"
                                     + "\n\t\tRuns the interactive process launcher."
                                 + "\n\texit"
@@ -163,14 +164,14 @@ namespace CreateProcessAsUser.Service
                         {
                             return;
                         }
-                    case "install":
+                    case "register":
                         {
-                            InstallService(true);
+                            RegisterService(true);
                             return;
                         }
-                    case "uninstall":
+                    case "unregister":
                         {
-                            InstallService(false);
+                            RegisterService(false);
                             return;
                         }
                     case "launch":
@@ -195,7 +196,7 @@ namespace CreateProcessAsUser.Service
             throw new NotImplementedException();
         }
 
-        private static void InstallService(bool install)
+        private static void RegisterService(bool install, bool ignoreUnsecureDirectory = false)
         {
             try
             {
@@ -221,6 +222,25 @@ namespace CreateProcessAsUser.Service
                     {
                         Console.WriteLine("This service cannot be installed on a UNC path.");
                         Environment.Exit(-1);
+                    }
+                    #endregion
+
+                    #region Secure path check
+                    //Because this program will be run with system privileges,
+                    //It is HIGHLY reccommended that it is installed under a secure directory,
+                    //So it cannot easily be replaced with some other malicious software.
+
+                    if (!ignoreUnsecureDirectory)
+                    {
+                        try
+                        {
+                            //TODO.
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Couldn't determine the security of this folder, skipping install.");
+                            Environment.Exit(-1);
+                        }
                     }
                     #endregion
                 }

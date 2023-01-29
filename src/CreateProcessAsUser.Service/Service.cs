@@ -1,7 +1,5 @@
 ﻿#define WAIT_FOR_DEBUGGER
 
-using CreateProcessAsUser.Shared;
-using CSharpTools.Pipes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,6 +12,8 @@ using System.Security.Principal;
 using System.ServiceProcess;
 using System.Threading;
 using System.Threading.Tasks;
+using CreateProcessAsUser.Shared;
+using CSharpTools.Pipes;
 
 #nullable enable
 namespace CreateProcessAsUser.Service
