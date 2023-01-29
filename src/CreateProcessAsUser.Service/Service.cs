@@ -1,4 +1,4 @@
-﻿//#define WAIT_FOR_DEBUGGER
+﻿#define WAIT_FOR_DEBUGGER
 
 using System;
 using System.Collections.Generic;
@@ -83,168 +83,170 @@ namespace CreateProcessAsUser.Service
             IntPtr token = IntPtr.Zero;
             IntPtr enviroment = IntPtr.Zero;
             External.PROCESS_INFORMATION processInformation = new();
+            SMessage formattedData = new();
 
-            //TODO: Move these options to the message parameters.
-            External.STARTUPINFO startInfo = new();
-            startInfo.cb = Marshal.SizeOf(typeof(External.STARTUPINFO));
-            startInfo.lpDesktop = "winsta0\\default";
-            startInfo.wShowWindow = 1;
+            try
+            {
+                //TODO: Move these options to the message parameters.
+                External.STARTUPINFO startInfo = new();
+                startInfo.cb = Marshal.SizeOf(typeof(External.STARTUPINFO));
+                startInfo.lpDesktop = "winsta0\\default";
+                startInfo.wShowWindow = 1;
 
-            SMessage formattedData;
-            try { formattedData = CSharpTools.Pipes.Helpers.Deserialize<SMessage>(data.ToArray()); }
+                try { formattedData = CSharpTools.Pipes.Helpers.Deserialize<SMessage>(data.ToArray()); }
+                catch (Exception)
+                {
+                    formattedData = new();
+                    return;
+                }
+                formattedData.result = new();
+
+                if (pipeServerManager == null || pipeServerManager.IsDisposed)
+                {
+                    //Return as the server has ended between receiving the message and now.
+                    return;
+                }
+
+                if (!pipeServerManager.PipeServers.TryGetValue(id, out PipeServer? clientPipe) || clientPipe == null)
+                {
+                    formattedData.result.result = EResult.UNKNOWN;
+                    return;
+                }
+
+                string applicationName = formattedData.parameters.processInformation.executablePath.FromCharArray();
+                string? commandLine = formattedData.parameters.processInformation.arguments.FromCharArray();
+                string workingDirectory = formattedData.parameters.processInformation.workingDirectory.FromCharArray();
+                if (!File.Exists(applicationName))
+                {
+                    formattedData.result.result = EResult.INVALID_PROCESS_INFORMATION;
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(commandLine))
+                    commandLine = null;
+                if (string.IsNullOrWhiteSpace(workingDirectory))
+                    workingDirectory = Path.GetDirectoryName(applicationName);
+
+                switch (formattedData.parameters.authenticationMode)
+                {
+                    case EAuthenticationMode.INHERIT:
+                        {
+                            //Get the calling process's PID.
+                            PipeStream pipe = (PipeStream)typeof(PipeServer)
+                                .GetProperty("_pipe", BindingFlags.NonPublic | BindingFlags.Instance)!
+                                .GetValue(clientPipe)!;
+
+                            if (!External.GetNamedPipeClientProcessId(pipe.SafePipeHandle.DangerousGetHandle(), out uint clientProcessID))
+                            {
+                                Debug.WriteLine(Marshal.GetLastWin32Error());
+                                formattedData.result.result = EResult.FAILED_TO_GET_CALLER_PID;
+                                return;
+                            }
+
+                            //Get the process information.
+                            //This will throw if the client process has ended, this is fine as we will catch this later.
+                            Process clientProcess = Process.GetProcessById((int)clientProcessID);
+
+                            //Get the token.
+                            IntPtr clientProcessToken = IntPtr.Zero;
+                            otherOpenHandles.Add(clientProcessToken);
+                            if (!External.OpenProcessToken(
+                                clientProcess.Handle,
+                                (int)(External.TOKEN_ACCESS.TOKEN_QUERY | External.TOKEN_ACCESS.TOKEN_DUPLICATE | External.TOKEN_ACCESS.TOKEN_IMPERSONATE),
+                                out clientProcessToken))
+                            {
+                                Debug.WriteLine(Marshal.GetLastWin32Error());
+                                formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
+                                return;
+                            }
+
+                            //Duplicate the token to be used for the new process.
+                            if (!External.DuplicateTokenEx(
+                                clientProcessToken,
+                                (int)(External.TOKEN_ACCESS.TOKEN_QUERY | External.TOKEN_ACCESS.TOKEN_DUPLICATE | External.TOKEN_ACCESS.TOKEN_ASSIGN_PRIMARY),
+                                IntPtr.Zero,
+                                (int)External.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
+                                (int)External.TOKEN_TYPE.TokenPrimary,
+                                out token))
+                            {
+                                Debug.WriteLine(Marshal.GetLastWin32Error());
+                                formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
+                                return;
+                            }
+                            break;
+                        }
+                    case EAuthenticationMode.CREDENTIALS:
+                        {
+                            if (!External.LogonUser(
+                                formattedData.parameters.credentials.username.FromCharArray(),
+                                formattedData.parameters.credentials.domain.FromCharArray(),
+                                formattedData.parameters.credentials.password.FromCharArray(),
+                                (int)External.LOGON_TYPE.LOGON32_LOGON_INTERACTIVE,
+                                (int)External.LOGON_PROVIDER.LOGON32_PROVIDER_DEFAULT,
+                                out token))
+                            {
+                                Debug.WriteLine(Marshal.GetLastWin32Error());
+                                formattedData.result.result = EResult.INVALID_CREDENTIALS;
+                                return;
+                            }
+                            break;
+                        }
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                //Load the users enviroment variables.
+                if (!External.CreateEnvironmentBlock(ref enviroment, token, false))
+                {
+                    Debug.WriteLine(Marshal.GetLastWin32Error());
+                    formattedData.result.result = EResult.FAILED_TO_GET_ENVIRONMENT;
+                    return;
+                }
+
+                //Create the process.
+                if (!External.CreateProcessAsUser(
+                    token,
+                    applicationName,
+                    commandLine,
+                    IntPtr.Zero,
+                    IntPtr.Zero,
+                    false,
+                    (uint)(External.PROCESS_CREATION_FLAGS.CREATE_UNICODE_ENVIRONMENT | External.PROCESS_CREATION_FLAGS.CREATE_NEW_CONSOLE),
+                    enviroment,
+                    workingDirectory,
+                    ref startInfo,
+                    out processInformation))
+                {
+                    Debug.WriteLine(Marshal.GetLastWin32Error());
+                    formattedData.result.result = EResult.FAILED_TO_CREATE_PROCESS;
+                    return;
+                }
+
+                formattedData.result.processID = processInformation.dwProcessId;
+                formattedData.result.result = EResult.CREATED_PROCESS;
+            }
             catch (Exception)
             {
-                formattedData = new();
-                goto sendResponse;
-            }
-            formattedData.result = new();
-
-            if (pipeServerManager == null || pipeServerManager.IsDisposed)
-            {
-                //Return as the server has ended between receiving the message and now.
-                return;
-            }
-
-            if (!pipeServerManager.PipeServers.TryGetValue(id, out PipeServer? clientPipe) || clientPipe == null)
-            {
                 formattedData.result.result = EResult.UNKNOWN;
-                goto sendResponse;
             }
-
-            string applicationName = formattedData.parameters.processInformation.executablePath.FromCharArray();
-            string? commandLine = formattedData.parameters.processInformation.arguments.FromCharArray();
-            string workingDirectory = formattedData.parameters.processInformation.workingDirectory.FromCharArray();
-            if (!File.Exists(applicationName))
+            finally
             {
-                formattedData.result.result = EResult.INVALID_PROCESS_INFORMATION;
-                goto cleanup;
+                //Send response.
+                try { pipeServerManager?.SendMessage(id, CSharpTools.Pipes.Helpers.Serialize(formattedData)); }
+                catch (Exception) {}
+
+                //Cleanup.
+                if (token != IntPtr.Zero)
+                    External.CloseHandle(token);
+                if (enviroment != IntPtr.Zero)
+                    External.DestroyEnvironmentBlock(enviroment);
+                if (processInformation.hThread != IntPtr.Zero)
+                    External.CloseHandle(processInformation.hThread);
+                if (processInformation.hProcess != IntPtr.Zero)
+                    External.CloseHandle(processInformation.hProcess);
+                foreach (IntPtr handle in otherOpenHandles)
+                    if (handle != IntPtr.Zero)
+                        External.CloseHandle(handle);
             }
-            if (string.IsNullOrWhiteSpace(commandLine))
-                commandLine = null;
-            if (string.IsNullOrWhiteSpace(workingDirectory))
-                workingDirectory = Path.GetDirectoryName(applicationName);
-
-            switch (formattedData.parameters.authenticationMode)
-            {
-                case EAuthenticationMode.INHERIT:
-                    //Get the calling process's PID.
-                    PipeStream pipe = (PipeStream)typeof(PipeServer)
-                        .GetProperty("_pipe", BindingFlags.NonPublic | BindingFlags.Instance)!
-                        .GetValue(clientPipe)!;
-
-                    if (!External.GetNamedPipeClientProcessId(pipe.SafePipeHandle.DangerousGetHandle(), out uint clientProcessID))
-                    {
-                        Debug.WriteLine(Marshal.GetLastWin32Error());
-                        formattedData.result.result = EResult.FAILED_TO_GET_CALLER_PID;
-                        goto sendResponse;
-                    }
-
-                    //Get the process information.
-                    Process clientProcess;
-                    try { clientProcess = Process.GetProcessById((int)clientProcessID); }
-                    catch (Exception) { return; }
-                    if (clientProcess.HasExited)
-                        return;
-
-                    //Get the token.
-                    IntPtr clientProcessToken = IntPtr.Zero;
-                    otherOpenHandles.Add(clientProcessToken);
-                    if (!External.OpenProcessToken(
-                        clientProcess.Handle,
-                        (int)(External.TOKEN_ACCESS.TOKEN_QUERY | External.TOKEN_ACCESS.TOKEN_DUPLICATE | External.TOKEN_ACCESS.TOKEN_IMPERSONATE),
-                        out clientProcessToken))
-                    {
-                        Debug.WriteLine(Marshal.GetLastWin32Error());
-                        formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
-                        goto sendResponse;
-                    }
-
-                    //Duplicate the token to be used for the new process.
-                    if (!External.DuplicateTokenEx(
-                        clientProcessToken,
-                        (int)(External.TOKEN_ACCESS.TOKEN_QUERY | External.TOKEN_ACCESS.TOKEN_DUPLICATE | External.TOKEN_ACCESS.TOKEN_ASSIGN_PRIMARY),
-                        IntPtr.Zero,
-                        (int)External.SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation,
-                        (int)External.TOKEN_TYPE.TokenPrimary,
-                        out token))
-                    {
-                        Debug.WriteLine(Marshal.GetLastWin32Error());
-                        formattedData.result.result = EResult.FAILED_TO_GET_TOKEN;
-                        goto sendResponse;
-                    }
-                    break;
-                case EAuthenticationMode.CREDENTIALS:
-                    if (!External.LogonUser(
-                        formattedData.parameters.credentials.username.FromCharArray(),
-                        formattedData.parameters.credentials.domain.FromCharArray(),
-                        formattedData.parameters.credentials.password.FromCharArray(),
-                        (int)External.LOGON_TYPE.LOGON32_LOGON_INTERACTIVE,
-                        (int)External.LOGON_PROVIDER.LOGON32_PROVIDER_DEFAULT,
-                        out token))
-                    {
-                        Debug.WriteLine(Marshal.GetLastWin32Error());
-                        formattedData.result.result = EResult.INVALID_CREDENTIALS;
-                        goto sendResponse;
-                    }
-                    break;
-                default:
-                    formattedData.result.result = EResult.UNKNOWN;
-                    goto sendResponse;
-            }
-
-            //Load the users enviroment variables.
-            if (!External.CreateEnvironmentBlock(ref enviroment, token, false))
-            {
-                Debug.WriteLine(Marshal.GetLastWin32Error());
-                formattedData.result.result = EResult.FAILED_TO_GET_ENVIRONMENT;
-                goto sendResponse;
-            }
-
-            if (pipeServerManager == null || pipeServerManager.IsDisposed || !clientPipe.IsConnected || clientPipe.IsDisposed)
-            {
-                //Return as the server has ended between receiving the message and now.
-                goto cleanup;
-            }
-
-            //Create the process.
-            if (!External.CreateProcessAsUser(
-                token,
-                applicationName,
-                commandLine,
-                IntPtr.Zero,
-                IntPtr.Zero,
-                false,
-                (uint)(External.PROCESS_CREATION_FLAGS.CREATE_UNICODE_ENVIRONMENT | External.PROCESS_CREATION_FLAGS.CREATE_NEW_CONSOLE),
-                enviroment,
-                workingDirectory,
-                ref startInfo,
-                out processInformation))
-            {
-                Debug.WriteLine(Marshal.GetLastWin32Error());
-                formattedData.result.result = EResult.FAILED_TO_CREATE_PROCESS;
-                goto sendResponse;
-            }
-
-            formattedData.result.processID = processInformation.dwProcessId;
-            formattedData.result.result = EResult.CREATED_PROCESS;
-
-        sendResponse:
-            try { pipeServerManager?.SendMessage(id, CSharpTools.Pipes.Helpers.Serialize(formattedData)); }
-            catch (Exception) {}
-
-        cleanup:
-
-            if (token != IntPtr.Zero)
-                External.CloseHandle(token);
-            if (enviroment != IntPtr.Zero)
-                External.DestroyEnvironmentBlock(enviroment);
-            if (processInformation.hThread != IntPtr.Zero)
-                External.CloseHandle(processInformation.hThread);
-            if (processInformation.hProcess != IntPtr.Zero)
-                External.CloseHandle(processInformation.hProcess);
-            foreach (IntPtr handle in otherOpenHandles)
-                if (handle != IntPtr.Zero)
-                    External.CloseHandle(handle);
         }
     }
 }

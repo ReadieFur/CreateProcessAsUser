@@ -118,12 +118,12 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>SET ERRORLEVEL=0
-@rem net stop CreateProcessAsUser.Service
+net stop CreateProcessAsUser.Service
 </PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>@rem xcopy /e /v /y "$(ProjectDir)$(OutDir)" "H:\Program Files\CreateProcessAsUser.Service"
-@rem net start CreateProcessAsUser.Service
+    <PostBuildEvent>xcopy /e /v /y "$(ProjectDir)$(OutDir)" "H:\Program Files\CreateProcessAsUser.Service"
+net start CreateProcessAsUser.Service
 </PostBuildEvent>
   </PropertyGroup>
 </Project>
